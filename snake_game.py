@@ -3,6 +3,7 @@ import random
 import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
+import os
 
 # Initialize pygame
 pygame.init()
@@ -34,16 +35,30 @@ font = pygame.font.Font(None, 36)
 large_font = pygame.font.Font(None, 72)  # Large font for game over text
 small_font = pygame.font.Font(None, 28)  # Smaller font for buttons
 
-# Load sound effects
-level_click_sound = pygame.mixer.Sound("button.mp3")
-food_eat_sound = pygame.mixer.Sound("eat.mp3")
-game_over_sound = pygame.mixer.Sound("gameover.mp3")
-direction_change_sound = pygame.mixer.Sound("move.mp3")
+# Load sound effects with fallback
+def load_sound(filename, default=None):
+    try:
+        return pygame.mixer.Sound(filename)
+    except pygame.error:
+        print(f"Sound file {filename} not found, using default.")
+        return default
+
+level_click_sound = load_sound("button.mp3")
+food_eat_sound = load_sound("eat.mp3")
+game_over_sound = load_sound("gameover.mp3")
+direction_change_sound = load_sound("move.mp3")
 background_music = "music.mp3"  # Background music file
 
-# Load background images
-game_background = pygame.image.load("backimg.jpg")
-score_background = pygame.image.load("lastimg.jpeg")
+# Load background images with fallback
+def load_image(filename, default=None):
+    try:
+        return pygame.image.load(filename)
+    except pygame.error:
+        print(f"Image file {filename} not found, using default.")
+        return default
+
+game_background = load_image("backimg.jpg", pygame.Surface((WIDTH, HEIGHT)))
+score_background = load_image("lastimg.jpeg", pygame.Surface((WIDTH, HEIGHT)))
 
 # Initialize game variables
 snake = [(WIDTH // 2, HEIGHT // 2)]
@@ -81,7 +96,8 @@ def generate_food():
 
 # Function to display game over screen
 def game_over():
-    pygame.mixer.Sound.play(game_over_sound)
+    if game_over_sound:
+        pygame.mixer.Sound.play(game_over_sound)
     screen.blit(score_background, (0, 0))
     
     # Display "Game Over" text
@@ -135,16 +151,20 @@ def start_game(speed):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP and direction != DOWN:
                     direction = UP
-                    pygame.mixer.Sound.play(direction_change_sound)
+                    if direction_change_sound:
+                        pygame.mixer.Sound.play(direction_change_sound)
                 elif event.key == pygame.K_DOWN and direction != UP:
                     direction = DOWN
-                    pygame.mixer.Sound.play(direction_change_sound)
+                    if direction_change_sound:
+                        pygame.mixer.Sound.play(direction_change_sound)
                 elif event.key == pygame.K_LEFT and direction != RIGHT:
                     direction = LEFT
-                    pygame.mixer.Sound.play(direction_change_sound)
+                    if direction_change_sound:
+                        pygame.mixer.Sound.play(direction_change_sound)
                 elif event.key == pygame.K_RIGHT and direction != LEFT:
                     direction = RIGHT
-                    pygame.mixer.Sound.play(direction_change_sound)
+                    if direction_change_sound:
+                        pygame.mixer.Sound.play(direction_change_sound)
 
         # Move the snake
         x, y = snake[0]
@@ -166,7 +186,8 @@ def start_game(speed):
 
         # Check for collision with food
         if check_food_collision():
-            pygame.mixer.Sound.play(food_eat_sound)
+            if food_eat_sound:
+                pygame.mixer.Sound.play(food_eat_sound)
             score += 1
             food = generate_food()
         else:
@@ -194,53 +215,15 @@ def start_game(speed):
         # Cap the frame rate
         clock.tick(speed)
 
-    # Stop background music
+    # Stop background music and show game over screen
     pygame.mixer.music.stop()
-
-    # Display game over screen
     game_over()
 
-# Tkinter setup
-def start_tkinter():
-    root = tk.Tk()
-    root.attributes('-fullscreen', True)
-    root.title("Snake Game")
-    root.configure(bg="white")  # Default background color set to white
+# Main loop
+if __name__ == "__main__":
+    clock = pygame.time.Clock()
+    pygame.mixer.music.load(background_music)  # Load background music
+    pygame.mixer.music.play(-1, 0.0)  # Loop the background music
 
-    # Load logo
-    image = Image.open("logo.jpeg")  # Make sure to have a logo.jpeg file
-    image = image.resize((400, 400), Image.LANCZOS)
-    photo = ImageTk.PhotoImage(image)
-    logo = tk.Label(image=photo, bg="white", borderwidth=10, relief="solid")
-    logo.pack(padx=25, pady=25)
-
-    # Quotes
-    quotes = tk.Label(root, text="Choose Difficulty Level", font=("Helvetica", 32, "bold"), bg="white", fg="black", padx=10, pady=10)
-    quotes.pack(pady=(20, 0))
-
-    # Additional text
-    additional_text = tk.Label(root, text="Get ready to play the Snake Game!", font=("Helvetica", 24, "italic"), bg="white", fg="black", padx=10, pady=10)
-    additional_text.pack(pady=(10, 20))
-
-    # Difficulty buttons
-    button_frame = tk.Frame(root, bg="white", borderwidth=5, relief="solid")
-    button_frame.pack(pady=(10, 30), padx=10)
-
-    def on_difficulty_button_click(speed):
-        pygame.mixer.Sound.play(level_click_sound)
-        root.destroy()
-        start_game(speed)
-
-    easy_button = tk.Button(button_frame, text="EASY", font=("Verdana", 16), bg="green", fg="white", command=lambda: on_difficulty_button_click(5), padx=20, pady=10)
-    medium_button = tk.Button(button_frame, text="MEDIUM", font=("Verdana", 16), bg="orange", fg="white", command=lambda: on_difficulty_button_click(10), padx=20, pady=10)
-    hard_button = tk.Button(button_frame, text="HARD", font=("Verdana", 16), bg="red", fg="white", command=lambda: on_difficulty_button_click(15), padx=20, pady=10)
-    
-    easy_button.grid(row=0, column=0, padx=10, pady=10)
-    medium_button.grid(row=0, column=1, padx=10, pady=10)
-    hard_button.grid(row=0, column=2, padx=10, pady=10)
-
-    # Run the Tkinter main loop
-    root.mainloop()
-
-# Start the game with tkinter
-start_tkinter()
+    start_game(10)
+    pygame.quit()
